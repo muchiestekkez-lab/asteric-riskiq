@@ -17,7 +17,9 @@ def _parse_origins() -> list[str]:
     """Parse CORS origins from environment or use defaults."""
     env_origins = os.getenv("CORS_ORIGINS", "")
     origins = [o.strip() for o in env_origins.split(",") if o.strip()] if env_origins else []
-    # Always include localhost for development
+    # Production frontend
+    origins.append("https://asteric-riskiq-51t5.vercel.app")
+    # Localhost for development
     origins.extend([
         "http://localhost:4000",
         "http://127.0.0.1:4000",
