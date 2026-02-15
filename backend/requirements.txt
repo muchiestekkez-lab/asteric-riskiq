@@ -1,0 +1,26 @@
+# Asteric RiskIQ - Backend Dependencies (no pinned versions for Python 3.14 compat)
+# Core API
+fastapi
+uvicorn[standard]
+pydantic
+python-multipart
+
+# ML & Data Science
+scikit-learn
+xgboost
+lightgbm
+numpy
+pandas
+scipy
+shap
+joblib
+
+# Data Generation
+faker
+
+# Utilities
+python-dateutil
+loguru
+
+# WebSocket
+websockets
