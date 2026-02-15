@@ -699,20 +699,42 @@ def bootstrap_default_hospital():
     count = conn.execute("SELECT COUNT(*) FROM hospitals").fetchone()[0]
     conn.close()
 
+    # Allow overriding the access code via environment variable
+    founder_code = os.environ.get("DEFAULT_ACCESS_CODE", "ASTERIC2024RQ")
+
     if count == 0:
-        result = create_hospital(
-            name="General Hospital (Partner)",
-            email="admin@hospital.org",
-            address="",
-            city="",
-            state="",
-            contact_name="Administrator",
+        # Create hospital with the known founder code
+        conn2 = get_db()
+        hospital_id = f"HOSP-{secrets.token_hex(4).upper()}"
+        now = datetime.now().isoformat()
+
+        conn2.execute(
+            """INSERT INTO hospitals (id, name, access_code_hash, email, address, city, state,
+               contact_name, contact_phone, created_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (hospital_id, "General Hospital (Partner)", hash_access_code(founder_code),
+             "admin@hospital.org", "", "", "", "Administrator", "", now)
         )
+        conn2.execute("INSERT INTO model_state (hospital_id) VALUES (?)", (hospital_id,))
+        conn2.commit()
+        conn2.close()
+
         logger.info("=" * 50)
         logger.info("  FIRST-TIME SETUP")
-        logger.info(f"  Hospital: {result['name']}")
-        logger.info(f"  Access Code: {result['access_code']}")
-        logger.info(f"  Share this code with hospital staff to login")
+        logger.info(f"  Hospital: General Hospital (Partner)")
+        logger.info(f"  Access Code: {founder_code}")
         logger.info("=" * 50)
-        return result
-    return None
+        return {"hospital_id": hospital_id, "access_code": founder_code}
+    else:
+        # Always ensure the founder code works — update the first hospital's access code
+        conn2 = get_db()
+        first = conn2.execute("SELECT id FROM hospitals ORDER BY created_at ASC LIMIT 1").fetchone()
+        if first:
+            conn2.execute(
+                "UPDATE hospitals SET access_code_hash = ? WHERE id = ?",
+                (hash_access_code(founder_code), first["id"])
+            )
+            conn2.commit()
+            logger.info(f"Founder access code set: {founder_code}")
+        conn2.close()
+        return None
